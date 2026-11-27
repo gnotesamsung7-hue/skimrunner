@@ -1,0 +1,44 @@
+plugins {
+    id 'com.android.application'
+}
+
+def buildNum = (System.getenv('BUILD_NUM') ?: '1') as int
+
+android {
+    namespace 'com.markdave.skimrunner'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.markdave.skimrunner'
+        minSdk 24
+        targetSdk 34
+        versionCode buildNum
+        versionName "1.0.${buildNum}"
+    }
+
+    signingConfigs {
+        release {
+            storeFile file(System.getenv('KS_PATH') ?: 'release.p12')
+            storePassword System.getenv('KS_PASS')
+            keyAlias System.getenv('KS_ALIAS')
+            keyPassword System.getenv('KS_PASS')
+            storeType 'pkcs12'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.11.0'
+}

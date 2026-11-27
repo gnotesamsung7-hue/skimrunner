@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Offer to open SkimRunner when a USB HID device (EdgeTX "USB Joystick" mode) is plugged in -->
+<resources>
+    <usb-device class="3" />
+</resources>
