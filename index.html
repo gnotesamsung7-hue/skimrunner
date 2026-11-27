@@ -65,7 +65,8 @@ table{border-collapse:collapse;width:100%}td{padding:4px 6px;border-bottom:1px s
 <div id="title" class="screen on"><div class="wrap">
   <h1>SKIM<span>RUNNER</span></h1>
   <div class="sub">AGILA-7 split-wing skimfighter &middot; Bakal Trench &amp; Bato Belt gap runs</div>
-  <div class="row"><button id="bFly" class="big">&#9654; FLY</button></div>
+  <div class="row"><button id="bFly" class="big">&#9654; FLY</button><button id="bPractice" class="big" style="background:rgba(20,50,90,.85)">PRACTICE</button></div>
+  <div class="small" style="margin:-4px 0 10px">Practice: easier gaps, no shield damage, turrets don't shoot back &mdash; scores aren't saved.</div>
   <div class="grid">
     <button data-go="calib">Radio &amp; Rates</button><button data-go="studio">Sound Studio</button>
     <button data-go="share">Share / QR</button><button data-go="art">Art Prompts</button>
@@ -111,7 +112,8 @@ table{border-collapse:collapse;width:100%}td{padding:4px 6px;border-bottom:1px s
   Right stick up/down = pitch, right stick left/right = roll. CH5 3-position switch = flight mode, CH6 = split-wings, CH7 = fire.<br>
   <b>Plug in:</b> connect the RadioMaster Pocket with a USB-C OTG cable, then pick <i>USB Joystick (HID)</i> on the radio.<br>
   <b>Touch:</b> left thumb = throttle (stays where you leave it) + yaw, right thumb = pitch + roll.<br>
-  <b>Flight modes:</b> ASSIST = gentle auto-level &middot; HORIZON = levels near center, flips at full stick &middot; ACRO = pure rates, no auto-level.<br>
+  <b>Flight modes:</b> ASSIST = gentle auto-level &middot; HORIZON = levels near center, flips at full stick &middot; ACRO = pure rates, no auto-level. No spare switch? Assign a radio button in Radio &amp; Rates &mdash; each press cycles the modes.<br>
+  <b>Practice:</b> easier gaps, no shield damage and turrets don't shoot back &mdash; learn the sticks, then hit FLY.<br>
   <b>Split-wings:</b> CRUISE (closed) = faster, smaller hitbox. ATTACK (open X) = sharper turns, quad lasers armed.<br>
   <b>Skim:</b> fly within a few meters of walls, beams and rocks to trigger PROXIMITY SKIM. That fills the Hyper-Boost capacitor and raises your score multiplier. Touching anything costs shields.<br>
   <b>Rings:</b> fly through plasma rings for points, boost and a little shield.<br>
@@ -151,7 +153,7 @@ function lsSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
 // ======================= SETTINGS =======================
 const DEFAULTS={
   map:{thr:[1,0],yaw:[0,0],pitch:[3,0],roll:[2,0],mode:[4,0],wings:[5,0],fire:[6,0]}, // [axis index (-1 = none), invert]
-  fireBtn:0, dead:0.03, invPitch:false, detent:false,
+  fireBtn:0, modeBtn:-1, dead:0.03, invPitch:false, detent:false,
   rates:{roll:{rc:1.0,sr:0.65,ex:0.2},pitch:{rc:0.8,sr:0.55,ex:0.2},yaw:{rc:0.6,sr:0.3,ex:0.1}},
   gfx:1, bloom:true, vol:0.8, fps:false
 };
@@ -176,7 +178,8 @@ function bfRate(x,r){
 // ======================= INPUT =======================
 const IN={src:'touch',name:'',raw:[],btn:[],thr:0.6,yaw:0,pitch:0,roll:0,mode:0,wingsOpen:false,fire:false,boost:false};
 const TS={L:{id:null,x:0},R:{id:null,x:0,y:0},thr:0.2,fire:false,boost:false,wings:false,mode:0};
-let lastPadName='';
+let lastPadName='',modeBtnPrev=false;
+const MODE_NAME=['ASSIST','HORIZON','ACRO'];
 function pollRaw(){
   if(window.AndroidPad){try{const s=AndroidPad.state();if(s){const p=s.split('|');IN.name=p[0];IN.raw=p[1]?p[1].split(',').map(Number):[];IN.btn=(p[2]||'').split('').map(c=>c==='1');IN.src='radio';return;}}catch(e){}}
   const gps=navigator.getGamepads?navigator.getGamepads():[];
@@ -192,7 +195,9 @@ function readControls(){
     const t=ax('thr'),y=ax('yaw'),p=ax('pitch'),r=ax('roll');
     let th=t===null?(TS.thr+1)/2:(t+1)/2; if(S.detent&&Math.abs(th-0.5)<0.06)th=0.5; IN.thr=clamp(th,0,1);
     IN.yaw=y===null?0:dz(y);IN.pitch=p===null?0:dz(p);IN.roll=r===null?0:dz(r);
-    const mv=ax('mode');IN.mode=mv===null?TS.mode:(mv<-0.33?0:mv>0.33?2:1);
+    if(S.modeBtn>=0){ // a radio button cycles ASSIST -> HORIZON -> ACRO
+      const b=!!IN.btn[S.modeBtn];if(b&&!modeBtnPrev){TS.mode=(TS.mode+1)%3;toast('Flight mode: '+MODE_NAME[TS.mode]);}modeBtnPrev=b;IN.mode=TS.mode;
+    }else{const mv=ax('mode');IN.mode=mv===null?TS.mode:(mv<-0.33?0:mv>0.33?2:1);}
     const wv=ax('wings');IN.wingsOpen=wv===null?TS.wings:wv>0;
     const fv=ax('fire');IN.fire=(fv!==null&&fv>0.5)||(S.fireBtn>=0&&!!IN.btn[S.fireBtn])||TS.fire;
     IN.boost=TS.boost;
@@ -223,7 +228,7 @@ function layoutTouch(){
   pos('tFire',W-60,g.R.y-g.r-70,play&&(!radio||S.map.fire[0]<0));
   pos('tBoost',60,g.L.y-g.r-62,play&&!radio);
   pos('tWings',W-150,g.R.y-g.r-90,play&&(!radio||S.map.wings[0]<0));
-  pos('tMode',150,g.L.y-g.r-90,play&&(!radio||S.map.mode[0]<0));
+  pos('tMode',150,g.L.y-g.r-90,play&&(!radio||(S.map.mode[0]<0&&S.modeBtn<0)));
   pos('tPause',W*.84,34,play);
   $('tWings').textContent='WINGS\n'+(TS.wings?'ATTACK':'CRUISE');$('tMode').textContent=['ASSIST','HORIZON','ACRO'][TS.mode];
 }
@@ -390,7 +395,7 @@ function inst(seg,geo,mat,list,colors){const im=new THREE.InstancedMesh(geo,mat,
 function buildSeg(i){
   const R=rng(runSeed*100003+i*7919+13),rr=(a,b)=>a+R()*(b-a),z0=-i*SEG,zc=z0-SEG/2;
   const seg={i,g:new THREE.Group(),cols:[],dyn:[],rings:[],turrets:[],rocks:null,inst:[],biome:biomeOf(i)};
-  const sector=Math.floor(i/SECTOR),diff=Math.min(1,0.25+sector*0.12+(i%SECTOR)*0.012),safe=i<2;
+  const sector=Math.floor(i/SECTOR),diff=practice?0.15:Math.min(1,0.25+sector*0.12+(i%SECTOR)*0.012),safe=i<2;
   if(seg.biome===0)buildTrench(seg,R,rr,z0,zc,diff,safe);else buildBelt(seg,R,rr,z0,zc,diff,safe);
   scene.add(seg.g);return seg;
 }
@@ -546,13 +551,14 @@ function boom(x,y,z,size,color){const b=booms.find(b=>b.life<=0)||booms[0];b.m.p
 const P={pos:ship.position,q:ship.quaternion,vel:new THREE.Vector3(),w:new THREE.Vector3(),speed:0,thr:.6,shield:100,boost:.3,score:0,dist:0,mult:1,chain:0,skimIdle:9,
   prox:0,proxN:new THREE.Vector3(),wingT:0,hitR:2,lastHit:-9,fireCD:0,tipN:0,boosting:false,sector:-1,exposed:false,outside:false,regenT:0,
   bank:0,pitch:0,gshake:0,shake:0,mode:0,rollRate:0,kills:0,rings:0,time:0,wrongWay:false,cur:0};
+let practice=false;
 let state='menu',T=0,flash=0,banner={text:'',t:0},lastSkimChime=0;
 const fwd=new THREE.Vector3(),vR=new THREE.Vector3(),vU=new THREE.Vector3(),tmp=new THREE.Vector3(),tmp2=new THREE.Vector3(),axisV=new THREE.Vector3(),dq=new THREE.Quaternion();
 
 function resetShip(){P.pos.set(0,30,20);P.q.identity();P.vel.set(0,0,-60);P.w.set(0,0,0);P.speed=60;P.shield=100;P.boost=.3;P.score=0;P.dist=0;P.mult=1;P.chain=0;
   P.wingT=0;P.lastHit=-9;P.sector=-1;P.kills=0;P.rings=0;P.time=0;flash=0;P.shake=0;
   lasers.forEach(l=>{l.life=0;l.m.visible=false;});ebolts.forEach(b=>{b.life=0;b.m.visible=false;});}
-function newRun(){clearWorld();runSeed=(Math.random()*1e6)|0;resetShip();ensureSegs(0,99);TS.thr=.2;state='play';showScreen(null);audioInit();sfx('start');layoutTouch();
+function newRun(pr){practice=!!pr;clearWorld();runSeed=(Math.random()*1e6)|0;resetShip();ensureSegs(0,99);TS.thr=.2;state='play';showScreen(null);audioInit();sfx('start');layoutTouch();
   try{if(!window.AndroidPad&&document.documentElement.requestFullscreen&&!document.fullscreenElement)document.documentElement.requestFullscreen().then(()=>screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(()=>{})).catch(()=>{});}catch(e){}}
 function pauseGame(){if(state!=='play')return;state='pause';showScreen('pause');layoutTouch();}
 function resumeGame(){state='play';showScreen(null);layoutTouch();}
@@ -594,9 +600,9 @@ function step(dt){
   // zone limits
   P.cur=Math.floor(-P.pos.z/SEG);const b=biomeOf(P.cur);
   P.exposed=b===0&&P.pos.y>TH+2;
-  if(P.exposed){P.shield-=12*dt;P.regenT=0;}
+  if(P.exposed&&!practice){P.shield-=12*dt;P.regenT=0;}
   const rr=Math.hypot(P.pos.x,P.pos.y-BELT_Y);P.outside=b===1&&rr>BELT_R+20;
-  if(P.outside){tmp.set(-P.pos.x,BELT_Y-P.pos.y,0).normalize();P.vel.addScaledVector(tmp,60*dt);P.shield-=4*dt;}
+  if(P.outside){tmp.set(-P.pos.x,BELT_Y-P.pos.y,0).normalize();P.vel.addScaledVector(tmp,60*dt);if(!practice)P.shield-=4*dt;}
   P.wrongWay=fwd.z>0.3;
   // rings
   for(let i=P.cur-1;i<=P.cur+1;i++){const s=segs.get(i);if(!s)continue;for(const r of s.rings){
@@ -615,7 +621,7 @@ function step(dt){
 function collide(c,d){
   normalAt(c,P.pos,tmp2);P.pos.addScaledVector(tmp2,P.hitR-d+.05);
   const vn=P.vel.dot(tmp2);if(vn<0){P.vel.addScaledVector(tmp2,-vn*1.5);P.speed*=.75;}
-  if(T-P.lastHit>.3){P.shield-=clamp(6+(-vn)*.22,6,45);P.lastHit=T;P.regenT=0;flash=1;P.shake+=.7;P.chain=0;sfx('impact');}
+  if(T-P.lastHit>.3){if(!practice)P.shield-=clamp(6+(-vn)*.22,6,45);P.lastHit=T;P.regenT=0;flash=1;P.shake+=.7;P.chain=0;sfx('impact');}
 }
 const ORDER=[1,2,0,3];
 function fireLaser(){
@@ -638,7 +644,7 @@ function updateWorld(dt){
     if(state==='play'&&i<=cur+5)for(const t of s.turrets){if(!t.alive)continue;
       const dx=P.pos.x-t.x,dy=P.pos.y-t.y,dzz=P.pos.z-t.z,dist=Math.hypot(dx,dy,dzz);
       t.head.lookAt(P.pos);
-      if(dzz>40&&dist<650){t.cd-=dt;if(t.cd<=0){t.cd=rand(1.4,2.6)-t.diff*.6;const b=ebolts.find(b=>b.life<=0);
+      if(!practice&&dzz>40&&dist<650){t.cd-=dt;if(t.cd<=0){t.cd=rand(1.4,2.6)-t.diff*.6;const b=ebolts.find(b=>b.life<=0);
         if(b){b.m.position.set(t.x,t.y,t.z);const tt=dist/(260+P.speed);tmp.copy(P.pos).addScaledVector(P.vel,tt*.6).sub(b.m.position).normalize();b.v.copy(tmp).multiplyScalar(260);b.life=4;b.m.visible=true;}}}}
   }
 }
@@ -798,6 +804,7 @@ function drawGauges(g){
 }
 function drawTop(g){
   g.textAlign='center';g.fillStyle=HC+'.95)';g.font='bold 22px monospace';g.fillText(Math.floor(P.score).toLocaleString(),W/2,H*.11);
+  if(practice){g.font='bold 12px system-ui';g.fillStyle='#7fb8ff';g.fillText('PRACTICE — NO DAMAGE · PAUSE TO QUIT',W/2,H*.11-26);}
   g.font='bold 13px system-ui';g.fillStyle=P.mult>1?AMB:HC+'.6)';g.fillText('x'+P.mult+' COMBO   '+(P.dist/1000).toFixed(2)+' km   '+BIOME_NAME[biomeOf(Math.floor(-P.pos.z/SEG))],W/2,H*.11+18);
   if(banner.t>0){g.globalAlpha=clamp(banner.t,0,1);g.font='bold 30px system-ui';g.fillStyle='#e9fbff';g.fillText(banner.text,W/2,H*.3);g.globalAlpha=1;}
 }
@@ -830,9 +837,10 @@ function go(id){screenStack.push(SCREENS.find(s=>$(s).classList.contains('on')))
 function back(){const p=screenStack.pop()||(state==='pause'?'pause':'title');showScreen(p);}
 document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>{audioInit();go(b.dataset.go);}));
 document.querySelectorAll('[data-back]').forEach(b=>b.addEventListener('click',back));
-$('bFly').onclick=()=>{screenStack=[];newRun();};
-$('bResume').onclick=resumeGame;$('bRestart').onclick=()=>{screenStack=[];newRun();};$('bQuit').onclick=()=>{screenStack=[];quitToTitle();};
-$('bRetry').onclick=()=>{screenStack=[];newRun();};$('bOverQuit').onclick=()=>{screenStack=[];quitToTitle();};
+$('bFly').onclick=()=>{screenStack=[];newRun(false);};
+$('bPractice').onclick=()=>{screenStack=[];newRun(true);};
+$('bResume').onclick=resumeGame;$('bRestart').onclick=()=>{screenStack=[];newRun(practice);};$('bQuit').onclick=()=>{screenStack=[];quitToTitle();};
+$('bRetry').onclick=()=>{screenStack=[];newRun(practice);};$('bOverQuit').onclick=()=>{screenStack=[];quitToTitle();};
 $('bPrint').onclick=()=>window.print();
 window.onBack=()=>{if(state==='play'){pauseGame();return true;}const on=SCREENS.find(s=>$(s).classList.contains('on'));
   if(on==='pause'){resumeGame();return true;}if(on&&on!=='title'&&on!=='over'){back();return true;}return false;};
@@ -845,7 +853,7 @@ function updatePadStatus(){$('padStatus').innerHTML=IN.name?`&#9989; Radio conne
 // --- Radio & Rates ---
 const FN=[['thr','Throttle (thrust / boost)','up'],['yaw','Yaw (rudder)','right'],['pitch','Pitch','up'],['roll','Roll (aileron)','right'],
   ['mode','Flight mode (3-pos)','switch'],['wings','Split-wings (2-pos)','switch'],['fire','Fire lasers','switch']];
-let detecting=null;
+let detecting=null,detectBtn=null;
 function buildCalib(){
   const opt=sel=>{let h='<option value="-1">none</option>';for(let i=0;i<12;i++)h+=`<option value="${i}" ${sel===i?'selected':''}>CH${i+1} (axis ${i})</option>`;return h;};
   let h=`<div class="panel"><h2>Radio &amp; Rates</h2><div class="small" id="calSrc"></div>
@@ -854,7 +862,10 @@ function buildCalib(){
   for(const[k,l,dir]of FN)h+=`<tr><td>${l}</td><td><select data-map="${k}">${opt(S.map[k][0])}</select></td>
     <td><label><input type="checkbox" data-inv="${k}" ${S.map[k][1]?'checked':''}> invert</label></td>
     <td><button class="sm" data-det="${k}">Detect</button></td></tr>`;
-  h+=`</table><div class="row"><label>Fire also on button <select id="cBtn"><option value="-1">none</option>${[...Array(32).keys()].map(i=>`<option value="${i}" ${S.fireBtn===i?'selected':''}>Button ${i+1}</option>`).join('')}</select></label></div>
+  const bopt=sel=>'<option value="-1">none</option>'+[...Array(32).keys()].map(i=>`<option value="${i}" ${sel===i?'selected':''}>Button ${i+1}</option>`).join('');
+  h+=`</table><div class="row"><label>Fire also on button <select id="cBtn">${bopt(S.fireBtn)}</select></label></div>
+  <div class="row"><label>Flight mode on a button <select id="cModeBtn">${bopt(S.modeBtn)}</select></label><button class="sm" id="cModeDet">Detect</button>
+    <span class="small">Each press: ASSIST &rarr; HORIZON &rarr; ACRO (starts in ASSIST). Overrides the mode switch.</span></div>
   <div class="row"><button class="sm" id="pSpec">Preset: default (T=1 Y=0 P=3 R=2)</button><button class="sm" id="pAetr">Preset: EdgeTX AETR (R=0 P=1 T=2 Y=3)</button></div>
   <div class="small" id="detMsg"></div>
   <div class="row"><label>Deadzone <input type="range" id="cDead" min="0" max="0.15" step="0.005" value="${S.dead}"> <span id="cDeadV"></span></label></div>
@@ -875,6 +886,9 @@ function buildCalib(){
     if(IN.src!=='radio'){toast('Connect a radio first');return;}
     detecting={fn:f[0],dir:f[2],base:IN.raw.slice(),t:6};$('detMsg').textContent=f[2]==='switch'?`Flip the ${f[1]} switch now...`:`Push the ${f[1]} stick fully ${f[2].toUpperCase()} now...`;});
   $('cBtn').onchange=e=>{S.fireBtn=+e.target.value;save();};
+  $('cModeBtn').onchange=e=>{S.modeBtn=+e.target.value;TS.mode=0;save();};
+  $('cModeDet').onclick=()=>{if(IN.src!=='radio'){toast('Connect a radio first');return;}
+    detectBtn={base:IN.btn.slice(),t:6};$('detMsg').textContent='Press the button you want for flight mode now...';};
   $('pSpec').onclick=()=>{S.map=clone(PRESETS.spec);save();buildCalib();};$('pAetr').onclick=()=>{S.map=clone(PRESETS.aetr);save();buildCalib();};
   $('cDead').oninput=e=>{S.dead=+e.target.value;save();refreshCalibLabels();};
   $('cInvP').onchange=e=>{S.invPitch=e.target.checked;save();};$('cDet').onchange=e=>{S.detent=e.target.checked;save();};
@@ -910,6 +924,9 @@ function drawCalib(dt){
   if(detecting){detecting.t-=dt;let bi=-1,bd=0,bv=0;IN.raw.forEach((v,i)=>{const d=Math.abs(v-(detecting.base[i]||0));if(d>bd){bd=d;bi=i;bv=v-(detecting.base[i]||0);}});
     if(bd>.5){S.map[detecting.fn][0]=bi;if(detecting.dir!=='switch')S.map[detecting.fn][1]=bv<0?1:0;save();toast(`${detecting.fn.toUpperCase()} → CH${bi+1}`);detecting=null;buildCalib();}
     else if(detecting.t<=0){detecting=null;$('detMsg').textContent='Nothing moved - try again.';}}
+  if(detectBtn){detectBtn.t-=dt;const i=IN.btn.findIndex((b,k)=>b&&!detectBtn.base[k]);
+    if(i>=0){S.modeBtn=i;TS.mode=0;save();detectBtn=null;toast('Flight mode → Button '+(i+1));buildCalib();}
+    else if(detectBtn.t<=0){detectBtn=null;$('detMsg').textContent='No button pressed - try again.';}}
 }
 // --- share / QR ---
 function buildShare(){drawQR($('qr'),APK_URL,5);$('qrUrl').textContent=APK_URL;$('webUrl').textContent=WEB_URL;}
