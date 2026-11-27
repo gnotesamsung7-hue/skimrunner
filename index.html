@@ -19,9 +19,12 @@ canvas#gl,canvas#hud{position:fixed;left:0;top:0;width:100%;height:100%;display:
 #tBoost{width:64px;height:64px;border-color:rgba(255,176,64,.8);color:#fd9}
 #tWings,#tMode{width:58px;height:58px;font-size:10px;white-space:pre-line}
 #tPause{width:44px;height:44px;border-radius:10px}
+#tAuto{width:62px;height:44px;border-radius:10px;font-size:11px;white-space:pre-line;border-color:rgba(120,200,255,.8);color:#cef}
+#tAuto.act{background:rgba(80,180,255,.45)}
 .screen{position:fixed;inset:0;display:none;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;
   background:radial-gradient(ellipse at center,rgba(5,7,15,.35),rgba(5,7,15,.85))}
 .screen.on{display:block}
+#title{background:linear-gradient(90deg,rgba(5,7,15,.92) 0%,rgba(5,7,15,.7) 45%,rgba(5,7,15,.15) 75%),url(art/title_banner.jpg) center/cover no-repeat,#05070f}
 .wrap{max-width:860px;margin:0 auto;padding:18px 16px 40px}
 .panel{background:var(--panel);border:1px solid rgba(127,255,212,.25);border-radius:14px;padding:14px 16px;margin:10px 0}
 h1{font:900 54px/1 'Segoe UI',system-ui;letter-spacing:6px;margin:18px 0 4px;color:#e9fbff;text-shadow:0 0 18px rgba(127,255,212,.6)}
@@ -47,6 +50,12 @@ table{border-collapse:collapse;width:100%}td{padding:4px 6px;border-bottom:1px s
 .prompt{white-space:pre-wrap;font-size:13px;color:#cde;background:rgba(0,0,0,.35);padding:8px;border-radius:8px;margin:4px 0 2px}
 .slot{display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:6px 0;border-bottom:1px solid rgba(127,255,212,.1)}
 .slot b{min-width:170px}.tag{font-size:12px;padding:2px 8px;border-radius:8px;background:#234}.tag.cus{background:#2a5a3a}
+.shipgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;margin:10px 0}
+.shipc{border:1px solid rgba(127,255,212,.25);border-radius:12px;padding:8px 10px;background:rgba(0,0,0,.3);cursor:pointer;touch-action:manipulation}
+.shipc.sel{border:2px solid var(--c);box-shadow:0 0 14px rgba(127,255,212,.45)}
+.shipc h3{margin:2px 0}.shipc canvas{width:100%;height:64px;display:block}
+.st{display:flex;align-items:center;gap:6px;font-size:11px;color:#9bc}.st span{width:62px}.st i{flex:1;height:6px;background:#132;border-radius:3px;overflow:hidden}
+.st i b{display:block;height:100%;background:var(--c)}
 #card{background:#fff;color:#111;border-radius:14px;padding:16px;display:inline-block;text-align:center}
 #card h3{color:#111;margin:4px 0}
 @media print{body *{visibility:hidden!important}#card,#card *{visibility:visible!important}#card{position:absolute;left:0;top:0}}
@@ -61,13 +70,16 @@ table{border-collapse:collapse;width:100%}td{padding:4px 6px;border-bottom:1px s
 <div id="tWings" class="tb">WINGS</div>
 <div id="tMode" class="tb">MODE</div>
 <div id="tPause" class="tb">II</div>
+<div id="tAuto" class="tb">AUTO
+PILOT</div>
 
 <div id="title" class="screen on"><div class="wrap">
   <h1>SKIM<span>RUNNER</span></h1>
   <div class="sub">AGILA-7 split-wing skimfighter &middot; Bakal Trench &amp; Bato Belt gap runs</div>
-  <div class="row"><button id="bFly" class="big">&#9654; FLY</button><button id="bPractice" class="big" style="background:rgba(20,50,90,.85)">PRACTICE</button></div>
-  <div class="small" style="margin:-4px 0 10px">Practice: easier gaps, no shield damage, turrets don't shoot back &mdash; scores aren't saved.</div>
+  <div class="row"><button id="bFly" class="big">&#9654; FLY</button><button id="bPractice" class="big" style="background:rgba(20,50,90,.85)">PRACTICE</button><button id="bOpen" class="big" style="background:rgba(50,30,90,.85)">OPEN SPACE</button></div>
+  <div class="small" style="margin:-4px 0 10px">Practice: easier gaps, no shield damage, turrets don't shoot back. Open Space: free flight, no obstacles at all. Scores aren't saved in either.</div>
   <div class="grid">
+    <button data-go="hangar" style="border-color:#ffd23a">&#128640; Hangar: <b id="shipName">AGILA-7</b></button>
     <button data-go="calib">Radio &amp; Rates</button><button data-go="studio">Sound Studio</button>
     <button data-go="share">Share / QR</button><button data-go="art">Art Prompts</button>
     <button data-go="settings">Settings</button><button data-go="help">How to Fly</button>
@@ -76,6 +88,11 @@ table{border-collapse:collapse;width:100%}td{padding:4px 6px;border-bottom:1px s
   <div class="small">Best score: <b id="best">0</b> &nbsp;&middot;&nbsp; <span id="ver"></span></div>
 </div></div>
 
+<div id="hangar" class="screen"><div class="wrap"><div class="panel">
+  <h2>Hangar</h2><div class="small">Pick your ship. Your choice is saved.</div>
+  <div id="shipGrid" class="shipgrid"></div>
+  <div class="row"><button data-back>Back</button></div>
+</div></div></div>
 <div id="calib" class="screen"><div class="wrap" id="calibBody"></div></div>
 <div id="studio" class="screen"><div class="wrap"><div class="panel">
   <h2>Sound Studio</h2>
@@ -114,6 +131,8 @@ table{border-collapse:collapse;width:100%}td{padding:4px 6px;border-bottom:1px s
   <b>Touch:</b> left thumb = throttle (stays where you leave it) + yaw, right thumb = pitch + roll.<br>
   <b>Flight modes:</b> ASSIST = gentle auto-level &middot; HORIZON = levels near center, flips at full stick &middot; ACRO = pure rates, no auto-level. No spare switch? Assign a radio button in Radio &amp; Rates &mdash; each press cycles the modes.<br>
   <b>Practice:</b> easier gaps, no shield damage and turrets don't shoot back &mdash; learn the sticks, then hit FLY.<br>
+  <b>Open Space:</b> free flight with no obstacles. Red beacons are on your left, green on your right when you're facing the right way.<br>
+  <b>Auto Pilot</b> (top-left button): rolls you level and turns you back onto the course. It hands control back when you're lined up, or as soon as you move the sticks. The COURSE marker / arrow always points the way when you're off course.<br>
   <b>Split-wings:</b> CRUISE (closed) = faster, smaller hitbox. ATTACK (open X) = sharper turns, quad lasers armed.<br>
   <b>Skim:</b> fly within a few meters of walls, beams and rocks to trigger PROXIMITY SKIM. That fills the Hyper-Boost capacitor and raises your score multiplier. Touching anything costs shields.<br>
   <b>Rings:</b> fly through plasma rings for points, boost and a little shield.<br>
@@ -155,8 +174,31 @@ const DEFAULTS={
   map:{thr:[1,0],yaw:[0,0],pitch:[3,0],roll:[2,0],mode:[4,0],wings:[5,0],fire:[6,0]}, // [axis index (-1 = none), invert]
   fireBtn:0, modeBtn:-1, dead:0.03, invPitch:false, detent:false,
   rates:{roll:{rc:1.0,sr:0.65,ex:0.2},pitch:{rc:0.8,sr:0.55,ex:0.2},yaw:{rc:0.6,sr:0.3,ex:0.1}},
-  gfx:1, bloom:true, vol:0.8, fps:false
+  gfx:1, bloom:true, vol:0.8, fps:false, ship:0
 };
+// spd/turn/hit = multipliers, shield = max, bFill/bDrain = boost capacitor, fire = shots/s, skim = skim range, wl = wing length
+const SHIPS=[
+ {name:'AGILA-7',tag:'Balanced eagle-class skimfighter. The all-rounder.',spd:1,turn:1,hit:1,shield:100,bFill:1,bDrain:1,fire:12,skim:1,wl:1,
+  hull:0xd4dae4,sA:0x1d4fd8,sB:0xd8261d,lA:0xff3a3a,lB:0x3aff6a,look:'white and gunmetal eagle-shaped hull with royal blue and red stripes and a small golden sun emblem'},
+ {name:'SuperDave',tag:'Ludicrous top speed. Thin shields. Hold on tight!',spd:1.9,turn:1.05,hit:.9,shield:80,bFill:1.3,bDrain:.8,fire:14,skim:1,wl:.9,
+  hull:0xffd23a,sA:0xd8261d,sB:0xffffff,lA:0xffe040,lB:0xff5020,look:'gleaming gold hull with red lightning-bolt stripes, oversized glowing engines and a big bold "SD" badge, built for pure speed'},
+ {name:'Maya Scout',tag:'Small and quick. Squeezes through tight gaps.',spd:1.2,turn:1.15,hit:.8,shield:70,bFill:1,bDrain:1,fire:10,skim:1,wl:.75,
+  hull:0x9a6a44,sA:0xf0e0c0,sB:0x302018,lA:0xff9040,lB:0xffe080,look:'tiny sparrow-like scout ship, warm brown hull with cream and dark brown feather patterns'},
+ {name:'Kalabaw Tank',tag:'Slow and heavy. Huge shields shrug off crashes.',spd:.85,turn:.8,hit:1.25,shield:170,bFill:.8,bDrain:1.1,fire:9,skim:1.1,wl:1.15,
+  hull:0x5a6470,sA:0x2a2f36,sB:0xa0a8b0,lA:0x40c0ff,lB:0x80ffff,look:'chunky armored heavy fighter inspired by a water buffalo, thick slate-grey plating and two curved horn-like cannon mounts'},
+ {name:'Tarsier',tag:'Twitchy interceptor. The sharpest turns in the fleet.',spd:1.05,turn:1.35,hit:.85,shield:85,bFill:1,bDrain:1,fire:12,skim:1,wl:.8,
+  hull:0x7a5a40,sA:0xffb040,sB:0x40ff90,lA:0x40ff90,lB:0xffb040,look:'compact interceptor with two huge round glowing sensor "eyes" like a tarsier, brown hull with orange and green accents'},
+ {name:'Bagwis Racer',tag:'Long wings, high speed, wide turns.',spd:1.4,turn:.9,hit:.95,shield:90,bFill:1.1,bDrain:1,fire:11,skim:1,wl:1.1,
+  hull:0xf4f6fa,sA:0x00b0ff,sB:0xff40a0,lA:0x00d0ff,lB:0xff40c0,look:'long-winged white racing ship with neon cyan and pink racing livery'},
+ {name:'Habagat Storm',tag:'Monsoon boost: charges fast, drains slow.',spd:1.1,turn:1,hit:1,shield:100,bFill:1.8,bDrain:.6,fire:12,skim:1,wl:1,
+  hull:0x2a3a6a,sA:0x80e0ff,sB:0xffffff,lA:0x80e0ff,lB:0xc0f0ff,look:'storm-blue fighter with swirling white wind patterns and crackling electric-blue engines'},
+ {name:'Lapu Striker',tag:'Rapid-fire quad lasers. Clears turrets fast.',spd:1,turn:1,hit:1.05,shield:110,bFill:1,bDrain:1,fire:20,skim:1,wl:1,
+  hull:0x8a2020,sA:0xffd23a,sB:0x111111,lA:0xff2020,lB:0xffd23a,look:'crimson strike fighter with gold and black warrior markings and extra-long laser cannons'},
+ {name:'Banog Hawk',tag:'Tough and agile. A veteran\'s ship.',spd:1.15,turn:1.1,hit:1,shield:120,bFill:1,bDrain:1,fire:12,skim:1,wl:1.05,
+  hull:0x4a5a44,sA:0xffffff,sB:0xc04020,lA:0xff6040,lB:0x60ff60,look:'olive-green hawk-shaped fighter with white and rust-red wing bands'},
+ {name:'Bituin Star',tag:'Skim specialist: wider skim zone, bigger combos.',spd:1.05,turn:1.05,hit:.95,shield:95,bFill:1.3,bDrain:1,fire:12,skim:1.5,wl:.95,
+  hull:0xe8e0ff,sA:0xffd23a,sB:0x8040ff,lA:0xffd23a,lB:0xc080ff,look:'pearl-white star-shaped fighter with gold and violet trim and a glowing star emblem'}
+];
 const PRESETS={
   spec:{thr:[1,0],yaw:[0,0],pitch:[3,0],roll:[2,0],mode:[4,0],wings:[5,0],fire:[6,0]},
   aetr:{roll:[0,0],pitch:[1,0],thr:[2,0],yaw:[3,0],mode:[4,0],wings:[5,0],fire:[6,0]}
@@ -166,6 +208,7 @@ const clone=o=>JSON.parse(JSON.stringify(o));
 let S=(()=>{try{const j=JSON.parse(lsGet('skim_settings')||'null');if(j)return merge(clone(DEFAULTS),j);}catch(e){}return clone(DEFAULTS);})();
 function save(){lsSet('skim_settings',JSON.stringify(S));}
 let BEST=+(lsGet('skim_best')||0);
+let SH=SHIPS[S.ship]||SHIPS[0];
 
 // Betaflight-style rate curve: stick -1..1 -> deg/s
 function bfRate(x,r){
@@ -221,6 +264,7 @@ holdBtn('tFire','fire');holdBtn('tBoost','boost');
 $('tWings').addEventListener('pointerdown',e=>{TS.wings=!TS.wings;e.stopPropagation();});
 $('tMode').addEventListener('pointerdown',e=>{TS.mode=(TS.mode+1)%3;e.stopPropagation();});
 $('tPause').addEventListener('pointerdown',e=>{e.stopPropagation();if(state==='play')pauseGame();});
+$('tAuto').addEventListener('pointerdown',e=>{e.stopPropagation();e.preventDefault();if(state!=='play')return;setAuto(!P.auto);if(P.auto)toast('Autopilot engaged — leveling and turning onto course');});
 function layoutTouch(){
   const g=stickGeo(),radio=IN.src==='radio',play=state==='play';
   const pos=(id,x,y,show)=>{const el=$(id);el.classList.toggle('on',!!show);if(show){el.style.left=(x-el.offsetWidth/2)+'px';el.style.top=(y-el.offsetHeight/2)+'px';}};
@@ -229,7 +273,7 @@ function layoutTouch(){
   pos('tBoost',60,g.L.y-g.r-62,play&&!radio);
   pos('tWings',W-150,g.R.y-g.r-90,play&&(!radio||S.map.wings[0]<0));
   pos('tMode',150,g.L.y-g.r-90,play&&(!radio||(S.map.mode[0]<0&&S.modeBtn<0)));
-  pos('tPause',W*.84,34,play);
+  pos('tPause',W*.84,34,play);pos('tAuto',W*.16,34,play);
   $('tWings').textContent='WINGS\n'+(TS.wings?'ATTACK':'CRUISE');$('tMode').textContent=['ASSIST','HORIZON','ACRO'][TS.mode];
 }
 
@@ -381,8 +425,8 @@ for(const side of[-1,1])for(const up of[1,-1]){
 
 // ======================= WORLD =======================
 const segs=new Map();let runSeed=1;
-function biomeOf(i){return Math.floor(Math.max(0,i)/SECTOR)%2===0?0:1;}
-const BIOME_NAME=['BAKAL TRENCH','BATO BELT'];
+function biomeOf(i){if(openSpace)return 2;return Math.floor(Math.max(0,i)/SECTOR)%2===0?0:1;}
+const BIOME_NAME=['BAKAL TRENCH','BATO BELT','OPEN SPACE'];
 function colBox(seg,x,y,z,sx,sy,sz,r){const c={t:0,x,y,z,hx:sx/2,hy:sy/2,hz:sz/2,r:r||0,ez:sz/2};seg.cols.push(c);return c;}
 function colSph(seg,x,y,z,r){const c={t:1,x,y,z,rad:r,ez:r};seg.cols.push(c);return c;}
 function mesh(seg,geo,mat,x,y,z,sx,sy,sz){const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);if(sx!==undefined)m.scale.set(sx,sy,sz);seg.g.add(m);return m;}
@@ -396,7 +440,7 @@ function buildSeg(i){
   const R=rng(runSeed*100003+i*7919+13),rr=(a,b)=>a+R()*(b-a),z0=-i*SEG,zc=z0-SEG/2;
   const seg={i,g:new THREE.Group(),cols:[],dyn:[],rings:[],turrets:[],rocks:null,inst:[],biome:biomeOf(i)};
   const sector=Math.floor(i/SECTOR),diff=practice?0.15:Math.min(1,0.25+sector*0.12+(i%SECTOR)*0.012),safe=i<2;
-  if(seg.biome===0)buildTrench(seg,R,rr,z0,zc,diff,safe);else buildBelt(seg,R,rr,z0,zc,diff,safe);
+  if(seg.biome===2)buildOpen(seg,R,rr,z0);else if(seg.biome===0)buildTrench(seg,R,rr,z0,zc,diff,safe);else buildBelt(seg,R,rr,z0,zc,diff,safe);
   scene.add(seg.g);return seg;
 }
 function buildTrench(seg,R,rr,z0,zc,diff,safe){
@@ -447,6 +491,13 @@ function buildTrench(seg,R,rr,z0,zc,diff,safe){
       if(R()<.5)ring(seg,rr(-18,18),rr(18,70),z-8);
     }else{ring(seg,rr(-20,20),rr(14,72),z);}
   }
+}
+// Open Space: no obstacles. Red (left) / green (right) beacon lights outline the lane; rings can be flown through but not hit.
+function buildOpen(seg,R,rr,z0){
+  const ll=[],lc=[];
+  for(let k=0;k<3;k++){const z=z0-k*50-10;for(const[x,y]of[[-60,0],[60,0],[-60,80],[60,80]]){ll.push([x,y,z,1.3,1.3,1.3]);lc.push(x<0?0xff4040:0x40ff70);}}
+  inst(seg,gSphere,mLight,ll,lc);
+  if(seg.i>=1)for(let k=0;k<2;k++)ring(seg,rr(-35,35),rr(10,70),z0-40-k*70).c.dead=true;
 }
 function turret(seg,side,y,z,diff){
   const x=side*(TW/2-2),grp=new THREE.Group();grp.position.set(x,y,z);seg.g.add(grp);
@@ -548,52 +599,60 @@ const booms=[];for(let i=0;i<14;i++){const m=new THREE.Mesh(gSphere,new THREE.Me
 function boom(x,y,z,size,color){const b=booms.find(b=>b.life<=0)||booms[0];b.m.position.set(x,y,z);b.m.material.color.setHex(color||0xffa040);b.life=b.max=.55;b.size=size;b.m.visible=true;}
 
 // ======================= GAME STATE =======================
-const P={pos:ship.position,q:ship.quaternion,vel:new THREE.Vector3(),w:new THREE.Vector3(),speed:0,thr:.6,shield:100,boost:.3,score:0,dist:0,mult:1,chain:0,skimIdle:9,
+const P={pos:ship.position,q:ship.quaternion,vel:new THREE.Vector3(),w:new THREE.Vector3(),speed:0,thr:.6,shield:100,maxShield:100,boost:.3,score:0,dist:0,mult:1,chain:0,skimIdle:9,
   prox:0,proxN:new THREE.Vector3(),wingT:0,hitR:2,lastHit:-9,fireCD:0,tipN:0,boosting:false,sector:-1,exposed:false,outside:false,regenT:0,
   bank:0,pitch:0,gshake:0,shake:0,mode:0,rollRate:0,kills:0,rings:0,time:0,wrongWay:false,cur:0};
-let practice=false;
+let practice=false,openSpace=false;
 let state='menu',T=0,flash=0,banner={text:'',t:0},lastSkimChime=0;
 const fwd=new THREE.Vector3(),vR=new THREE.Vector3(),vU=new THREE.Vector3(),tmp=new THREE.Vector3(),tmp2=new THREE.Vector3(),axisV=new THREE.Vector3(),dq=new THREE.Quaternion();
 
-function resetShip(){P.pos.set(0,30,20);P.q.identity();P.vel.set(0,0,-60);P.w.set(0,0,0);P.speed=60;P.shield=100;P.boost=.3;P.score=0;P.dist=0;P.mult=1;P.chain=0;
+function resetShip(){P.pos.set(0,30,20);P.q.identity();P.vel.set(0,0,-60);P.w.set(0,0,0);P.speed=60;P.maxShield=SH.shield;P.shield=P.maxShield;P.boost=.3;P.score=0;P.dist=0;P.mult=1;P.chain=0;
   P.wingT=0;P.lastHit=-9;P.sector=-1;P.kills=0;P.rings=0;P.time=0;flash=0;P.shake=0;
   lasers.forEach(l=>{l.life=0;l.m.visible=false;});ebolts.forEach(b=>{b.life=0;b.m.visible=false;});}
-function newRun(pr){practice=!!pr;clearWorld();runSeed=(Math.random()*1e6)|0;resetShip();ensureSegs(0,99);TS.thr=.2;state='play';showScreen(null);audioInit();sfx('start');layoutTouch();
+function newRun(pr,os){practice=!!pr||!!os;openSpace=!!os;setAuto(false);clearWorld();runSeed=(Math.random()*1e6)|0;resetShip();ensureSegs(0,99);TS.thr=.2;state='play';showScreen(null);audioInit();sfx('start');layoutTouch();
   try{if(!window.AndroidPad&&document.documentElement.requestFullscreen&&!document.fullscreenElement)document.documentElement.requestFullscreen().then(()=>screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(()=>{})).catch(()=>{});}catch(e){}}
 function pauseGame(){if(state!=='play')return;state='pause';showScreen('pause');layoutTouch();}
 function resumeGame(){state='play';showScreen(null);layoutTouch();}
-function quitToTitle(){state='menu';clearWorld();resetShip();ensureSegs(0,99);showScreen('title');layoutTouch();}
+function quitToTitle(){state='menu';openSpace=false;setAuto(false);clearWorld();resetShip();ensureSegs(0,99);showScreen('title');layoutTouch();}
 function die(){state='over';boom(P.pos.x,P.pos.y,P.pos.z-6,14,0xff8030);sfx('gameover');P.shield=0;layoutTouch();
   const sc=Math.floor(P.score),nb=sc>BEST;if(nb){BEST=sc;lsSet('skim_best',String(BEST));}
   setTimeout(()=>{if(state!=='over')return;$('overStats').innerHTML=`Score <b>${sc.toLocaleString()}</b>${nb?' &mdash; NEW BEST!':''}<br>Distance ${(P.dist/1000).toFixed(2)} km &middot; Sector ${P.sector+1}<br>Turrets/rocks destroyed ${P.kills} &middot; Rings ${P.rings}<br>Best ${BEST.toLocaleString()}`;showScreen('over');},1300);}
 
 function step(dt){
   P.time+=dt;
-  P.wingT=clamp(P.wingT+(IN.wingsOpen?1:-1)*dt*2.2,0,1);P.hitR=lerp(2.0,3.2,P.wingT);
-  const mode=P.mode=IN.mode,rm=lerp(.8,1,P.wingT)*(mode===0?.55:1);
+  P.wingT=clamp(P.wingT+(IN.wingsOpen?1:-1)*dt*2.2,0,1);P.hitR=lerp(2.0,3.2,P.wingT)*SH.hit;
+  const mode=P.mode=IN.mode,rm=lerp(.8,1,P.wingT)*(mode===0?.55:1)*SH.turn;
   let wx=-bfRate(IN.pitch,S.rates.pitch)*rm*D2R,wy=-bfRate(IN.yaw,S.rates.yaw)*rm*D2R,wz=-bfRate(IN.roll,S.rates.roll)*rm*D2R;
   vR.set(1,0,0).applyQuaternion(P.q);vU.set(0,1,0).applyQuaternion(P.q);fwd.set(0,0,-1).applyQuaternion(P.q);
   P.bank=Math.atan2(vR.y,vU.y);P.pitch=Math.asin(clamp(fwd.y,-1,1));
   if(mode<2){const sm=Math.max(Math.abs(IN.roll),Math.abs(IN.pitch)),k=mode===0?2.6*(1-sm*.7):3.5*Math.pow(1-sm,2);
     wz+=-k*P.bank;wx+=-k*.6*P.pitch*Math.max(0,Math.cos(P.bank));}
+  if(P.auto){ // autopilot: roll level and steer the nose at a point down the course centerline
+    courseTarget(tmp).sub(P.pos).applyQuaternion(dq.copy(P.q).invert());
+    const yawE=Math.atan2(tmp.x,-tmp.z),pitE=Math.atan2(tmp.y,Math.hypot(tmp.x,tmp.z)),cap=3;
+    wx=clamp(pitE*3,-cap,cap);wy=clamp(-yawE*3,-cap,cap);wz=clamp(-P.bank*4,-cap*1.5,cap*1.5);
+    P.autoOk=Math.max(Math.abs(yawE),Math.abs(pitE),Math.abs(P.bank))<.07?P.autoOk+dt:0;
+    if(P.autoOk>.6){setAuto(false);toast('On course — you have control');}
+    else if(Math.max(Math.abs(IN.roll),Math.abs(IN.pitch),Math.abs(IN.yaw))>.6){setAuto(false);toast('Autopilot off — pilot override');}
+  }
   const a=1-Math.exp(-(mode===2?22:12)*dt),ox=P.w.x,oy=P.w.y,oz=P.w.z;
   P.w.x+=(wx-P.w.x)*a;P.w.y+=(wy-P.w.y)*a;P.w.z+=(wz-P.w.z)*a;
   const angAcc=Math.hypot(P.w.x-ox,P.w.y-oy,P.w.z-oz)/dt;P.rollRate=P.w.z;
   const ang=P.w.length()*dt;if(ang>1e-7){axisV.copy(P.w).normalize();dq.setFromAxisAngle(axisV,ang);P.q.multiply(dq).normalize();}
   // thrust
-  P.thr=IN.thr;const maxS=lerp(175,135,P.wingT),minS=25;
-  P.boosting=(P.thr>.93||IN.boost)&&P.boost>.01;if(P.boosting){P.boost=Math.max(0,P.boost-.2*dt);}
+  P.thr=IN.thr;const maxS=lerp(175,135,P.wingT)*SH.spd,minS=25;
+  P.boosting=(P.thr>.93||IN.boost)&&P.boost>.01;if(P.boosting){P.boost=Math.max(0,P.boost-.2*SH.bDrain*dt);}
   const tgt=(minS+P.thr*(maxS-minS))*(P.boosting?1.5:1);
   P.speed+=(tgt-P.speed)*(1-Math.exp(-(P.boosting?2.5:1.2)*dt));
   fwd.set(0,0,-1).applyQuaternion(P.q);tmp.copy(fwd).multiplyScalar(P.speed);P.vel.lerp(tmp,1-Math.exp(-[6,4.5,3][mode]*dt));
   // move with sub-steps + collisions
-  const prevZ=P.pos.z,travel=P.vel.length()*dt,n=Math.min(12,Math.max(1,Math.ceil(travel/1.2)));
+  const prevZ=P.pos.z,travel=P.vel.length()*dt,n=Math.min(24,Math.max(1,Math.ceil(travel/1.2)));
   let minD=1e9,nearC=null;
   for(let k=0;k<n;k++){P.pos.addScaledVector(P.vel,dt/n);const q=worldQuery(P.pos);if(q.d<minD){minD=q.d;nearC=q.c;}if(q.d<P.hitR)collide(q.c,q.d);}
   // proximity skim
-  const range=lerp(7,10,P.wingT),gap=minD-P.hitR;P.prox=gap<range?clamp(1-gap/range,0,1):0;
+  const range=lerp(7,10,P.wingT)*SH.skim,gap=minD-P.hitR;P.prox=gap<range?clamp(1-gap/range,0,1):0;
   if(nearC&&P.prox>0)normalAt(nearC,P.pos,P.proxN);
-  if(P.prox>.05){P.chain+=dt*P.prox*1.4;P.skimIdle=0;P.boost=Math.min(1,P.boost+P.prox*.22*dt);P.score+=P.prox*90*dt*P.mult;
+  if(P.prox>.05){P.chain+=dt*P.prox*1.4;P.skimIdle=0;P.boost=Math.min(1,P.boost+P.prox*.22*SH.bFill*dt);P.score+=P.prox*90*dt*P.mult;
     if(Math.floor(P.chain)>Math.floor(P.chain-dt*P.prox*1.4)&&T-lastSkimChime>.4){sfx('skim');lastSkimChime=T;}}
   else{P.skimIdle+=dt;if(P.skimIdle>2)P.chain=Math.max(0,P.chain-dt*2);}
   P.mult=1+Math.min(9,Math.floor(P.chain));
@@ -603,21 +662,25 @@ function step(dt){
   if(P.exposed&&!practice){P.shield-=12*dt;P.regenT=0;}
   const rr=Math.hypot(P.pos.x,P.pos.y-BELT_Y);P.outside=b===1&&rr>BELT_R+20;
   if(P.outside){tmp.set(-P.pos.x,BELT_Y-P.pos.y,0).normalize();P.vel.addScaledVector(tmp,60*dt);if(!practice)P.shield-=4*dt;}
-  P.wrongWay=fwd.z>0.3;
+  P.wrongWay=fwd.z>0.3&&!P.auto;
   // rings
   for(let i=P.cur-1;i<=P.cur+1;i++){const s=segs.get(i);if(!s)continue;for(const r of s.rings){
     if(!r.got&&prevZ>r.z&&P.pos.z<=r.z&&Math.hypot(P.pos.x-r.x,P.pos.y-r.y)<r.R-.6){r.got=true;r.m.visible=false;r.c.dead=true;P.rings++;
-      P.score+=500*P.mult;P.boost=Math.min(1,P.boost+.15);P.shield=Math.min(100,P.shield+5);boom(r.x,r.y,r.z,11,0x40ffe0);sfx('ring');}}}
+      P.score+=500*P.mult;P.boost=Math.min(1,P.boost+.15);P.shield=Math.min(P.maxShield,P.shield+5);boom(r.x,r.y,r.z,11,0x40ffe0);sfx('ring');}}}
   // lasers
-  P.fireCD-=dt;if(IN.fire&&P.wingT>.95&&P.fireCD<=0){fireLaser();P.fireCD=1/12;}
-  P.regenT+=dt;if(P.regenT>4)P.shield=Math.min(100,P.shield+2*dt);
+  P.fireCD-=dt;if(IN.fire&&P.wingT>.95&&P.fireCD<=0){fireLaser();P.fireCD=1/SH.fire;}
+  P.regenT+=dt;if(P.regenT>4)P.shield=Math.min(P.maxShield,P.shield+2*dt);
   const dz=Math.max(0,-P.pos.z)-P.dist;if(dz>0){P.dist+=dz;P.score+=dz*.1*P.mult;}
-  const sec=Math.floor(Math.max(0,P.cur)/SECTOR);if(sec!==P.sector){P.sector=sec;banner={text:`SECTOR ${sec+1} — ${BIOME_NAME[sec%2]}`,t:3};}
+  const sec=Math.floor(Math.max(0,P.cur)/SECTOR);if(sec!==P.sector){P.sector=sec;banner={text:openSpace?'OPEN SPACE — FREE FLIGHT':`SECTOR ${sec+1} — ${BIOME_NAME[sec%2]}`,t:3};}
   P.gshake=clamp(angAcc/45,0,1)*.45+(P.boosting?.18:0)+(P.exposed?.4:0)+P.prox*.12;
-  if(P.shield<35&&T%1.2<dt)sfx('alarm');
+  if(P.shield<P.maxShield*.35&&T%1.2<dt)sfx('alarm');
   if(P.boosting&&!P._wasBoost)sfx('boost');P._wasBoost=P.boosting;
   if(P.shield<=0)die();
 }
+// Center of the flyable corridor for the current zone, and a point ahead on it
+function courseTarget(out){const b=biomeOf(Math.floor(-P.pos.z/SEG)),cy=b===0?35:b===1?BELT_Y:40,lat=Math.hypot(P.pos.x,P.pos.y-cy);
+  return out.set(0,cy,P.pos.z-Math.max(150,P.speed*2,lat));} // look-ahead >= sideways offset keeps the climb/turn back under ~45 deg
+function setAuto(on){P.auto=on;P.autoOk=0;$('tAuto').classList.toggle('act',on);$('tAuto').textContent=on?'AUTO\nON':'AUTO\nPILOT';}
 function collide(c,d){
   normalAt(c,P.pos,tmp2);P.pos.addScaledVector(tmp2,P.hitR-d+.05);
   const vn=P.vel.dot(tmp2);if(vn<0){P.vel.addScaledVector(tmp2,-vn*1.5);P.speed*=.75;}
@@ -670,7 +733,7 @@ function updateShipVisual(dt){
   camera.position.set((Math.random()-.5)*s*.04,(Math.random()-.5)*s*.04-clamp(P.w.x*.015,-.05,.05),0);
   const fov=78+clamp(P.speed/175,0,1.5)*8+(P.boosting?6:0);camera.fov+=(fov-camera.fov)*Math.min(1,dt*3);camera.updateProjectionMatrix();
   sky.position.copy(P.pos);stars.position.copy(P.pos);
-  const b=biomeOf(Math.floor(-P.pos.z/SEG));tmp.set(...(b===0?[.043,.059,.102]:[.07,.04,.11]));
+  const b=biomeOf(Math.floor(-P.pos.z/SEG));tmp.set(...(b===0?[.043,.059,.102]:b===1?[.07,.04,.11]:[.03,.05,.1]));
   scene.fog.color.r+=(tmp.x-scene.fog.color.r)*dt;scene.fog.color.g+=(tmp.y-scene.fog.color.g)*dt;scene.fog.color.b+=(tmp.z-scene.fog.color.b)*dt;
 }
 function menuIdle(dt){P.pos.set(Math.sin(T*.2)*6,30+Math.sin(T*.37)*4,20);P.q.setFromEuler(new THREE.Euler(Math.sin(T*.3)*.05,Math.sin(T*.17)*.12,Math.sin(T*.23)*.15));P.speed=0;P.gshake=0;P.wingT=.5+.5*Math.sin(T*.6);}
@@ -698,7 +761,7 @@ function audioInit(){
 }
 function audioUpdate(){
   if(!AU.ctx)return;const e=AU.e,t=AU.ctx.currentTime,play=state==='play';
-  const f=40+P.thr*80+(P.boosting?30:0);
+  const f=40+P.thr*80*Math.min(SH.spd,1.5)+(P.boosting?30:0);
   e.o1.frequency.setTargetAtTime(f,t,.06);e.o2.frequency.setTargetAtTime(f*1.012,t,.06);e.o3.frequency.setTargetAtTime(f/2,t,.06);
   const rr=Math.abs(P.rollRate);e.lp.frequency.setTargetAtTime(220+P.thr*1500+rr*260,t,.05);
   const g=Math.min(4,Math.floor(rr*.9+(P.boosting?2:0)));if(g!==e.grit){e.ws.curve=CURVES[g];e.grit=g;}
@@ -784,10 +847,26 @@ function drawFlight(g){
   // velocity vector
   if(P.vel.lengthSq()>1){tmp.copy(P.vel).normalize();if(projDir(tmp.x,tmp.y,tmp.z,pa)){g.strokeStyle=P.prox>.05?AMB:HC+'.95)';g.lineWidth=2;
     g.beginPath();g.arc(pa.x,pa.y,7,0,7);g.moveTo(pa.x-7,pa.y);g.lineTo(pa.x-17,pa.y);g.moveTo(pa.x+7,pa.y);g.lineTo(pa.x+17,pa.y);g.moveTo(pa.x,pa.y-7);g.lineTo(pa.x,pa.y-13);g.stroke();}}
+  drawCourseGuide(g);
   // trench entry marker near the end of a belt sector
   const cur=Math.floor(-P.pos.z/SEG);
   if(biomeOf(cur)===1&&(cur%SECTOR)>=SECTOR-3){const ez=-(Math.floor(cur/SECTOR)+1)*SECTOR*SEG;_v.set(0,45,ez).project(camera);
     if(_v.z<1){const x=clamp((_v.x+1)/2*W,40,W-40),y=clamp((1-_v.y)/2*H,40,H-40);g.strokeStyle=AMB;g.lineWidth=2;g.strokeRect(x-14,y-14,28,28);g.fillStyle=AMB;g.font='bold 12px system-ui';g.fillText('TRENCH ENTRY',x,y-20);}}
+}
+// COURSE marker: shown during autopilot or when >20 deg off course; edge arrow when it's off screen
+const _cv=new THREE.Vector3(),_cq=new THREE.Quaternion();
+function drawCourseGuide(g){
+  if(state!=='play')return;
+  courseTarget(_cv).sub(P.pos).normalize();fwd.set(0,0,-1).applyQuaternion(P.q);
+  const off=Math.acos(clamp(fwd.dot(_cv),-1,1));if(!P.auto&&off<.35)return;
+  const col=P.auto?'#6cf':AMB;g.strokeStyle=g.fillStyle=col;g.lineWidth=2.5;g.font='bold 12px system-ui';g.textAlign='center';
+  const onScreen=projDir(_cv.x,_cv.y,_cv.z,pa)&&pa.x>40&&pa.x<W-40&&pa.y>50&&pa.y<H-60;
+  if(onScreen){g.beginPath();g.moveTo(pa.x,pa.y-12);g.lineTo(pa.x+12,pa.y);g.lineTo(pa.x,pa.y+12);g.lineTo(pa.x-12,pa.y);g.closePath();g.stroke();g.fillText('COURSE',pa.x,pa.y-18);}
+  else{_cv.applyQuaternion(_cq.copy(P.q).invert());let a=Math.atan2(-_cv.y,_cv.x);if(Math.hypot(_cv.x,_cv.y)<.05)a=Math.PI/2;
+    const x=W/2+Math.cos(a)*W*.36,y=H/2+Math.sin(a)*H*.33;g.save();g.translate(x,y);g.rotate(a);
+    g.beginPath();g.moveTo(18,0);g.lineTo(-8,-12);g.lineTo(-8,12);g.closePath();g.fill();g.restore();g.fillText('COURSE',x,y+(Math.sin(a)>0?-20:28));}
+  if(P.auto){g.font='bold 16px system-ui';g.fillStyle='#6cf';g.fillText('AUTOPILOT — '+(off<.12&&Math.abs(P.bank)<.12?'ON COURSE':'RECOVERING'),W/2,H*.6);}
+  else if(off>1.2){g.font='bold 13px system-ui';g.fillStyle=AMB;g.fillText('LOST? TAP AUTO PILOT',W/2,H*.6);}
 }
 function bar(g,x,y,w,h,v,col,label,val){g.strokeStyle=HC+'.5)';g.lineWidth=1.5;g.strokeRect(x,y,w,h);g.fillStyle=col;const hh=h*clamp(v,0,1);g.fillRect(x+2,y+h-hh+2,w-4,Math.max(0,hh-4));
   g.fillStyle=HC+'.85)';g.font='bold 11px system-ui';g.textAlign='center';g.fillText(label,x+w/2,y-6);g.fillText(val,x+w/2,y+h+14);}
@@ -795,16 +874,16 @@ function drawGauges(g){
   const h=H*.34,y=H*.36,x0=W*.06,x1=W*.94;
   bar(g,x0,y,14,h,P.thr,P.boosting?AMB:HC+'.55)','THR',Math.round(P.thr*100)+'%');
   g.strokeStyle=AMB;g.beginPath();g.moveTo(x0-4,y+h*.07);g.lineTo(x0+18,y+h*.07);g.stroke();
-  g.fillStyle=HC+'.9)';g.font='bold 15px monospace';g.textAlign='left';g.fillText(Math.round(P.speed*3.6)+' km/h',x0+22,y+h/2);
-  bar(g,x1-46,y,14,h,P.shield/100,P.shield<35?RED:'rgba(80,170,255,.8)','SHLD',Math.round(P.shield)+'%');
+  g.fillStyle=HC+'.9)';g.font='bold 14px monospace';g.textAlign='left';g.fillText(Math.round(P.speed*3.6)+' km/h',x0-8,y+h+32);
+  const sf=P.shield/P.maxShield;bar(g,x1-46,y,14,h,sf,sf<.35?RED:'rgba(80,170,255,.8)','SHLD',Math.round(sf*100)+'%');
   bar(g,x1-12,y,10,h,P.boost,P.boost>.98?'#fff':AMB,'HYP',Math.round(P.boost*100));
   const by=H*.885;g.textAlign='center';g.font='bold 13px system-ui';
   g.fillStyle=HC+'.85)';g.fillText(['ASSIST','HORIZON','ACRO'][P.mode]+'  ·  WINGS '+(P.wingT>.95?'ATTACK':P.wingT<.05?'CRUISE':'MOVING')+'  ·  '+(P.wingT>.95?'LASERS ARMED':'LASERS SAFE'),W/2,by);
-  g.font='11px system-ui';g.fillStyle='#8ab';g.fillText((IN.src==='radio'?'RADIO: '+IN.name.slice(0,28):'TOUCH')+'  ·  '+VER,W/2,by+16);
+  g.font='11px system-ui';g.fillStyle='#8ab';g.fillText(SH.name+'  ·  '+(IN.src==='radio'?'RADIO: '+IN.name.slice(0,28):'TOUCH')+'  ·  '+VER,W/2,by+16);
 }
 function drawTop(g){
   g.textAlign='center';g.fillStyle=HC+'.95)';g.font='bold 22px monospace';g.fillText(Math.floor(P.score).toLocaleString(),W/2,H*.11);
-  if(practice){g.font='bold 12px system-ui';g.fillStyle='#7fb8ff';g.fillText('PRACTICE — NO DAMAGE · PAUSE TO QUIT',W/2,H*.11-26);}
+  if(practice){g.font='bold 12px system-ui';g.fillStyle='#7fb8ff';g.fillText((openSpace?'OPEN SPACE — FREE FLIGHT':'PRACTICE — NO DAMAGE')+' · PAUSE TO QUIT',W/2,H*.11-26);}
   g.font='bold 13px system-ui';g.fillStyle=P.mult>1?AMB:HC+'.6)';g.fillText('x'+P.mult+' COMBO   '+(P.dist/1000).toFixed(2)+' km   '+BIOME_NAME[biomeOf(Math.floor(-P.pos.z/SEG))],W/2,H*.11+18);
   if(banner.t>0){g.globalAlpha=clamp(banner.t,0,1);g.font='bold 30px system-ui';g.fillStyle='#e9fbff';g.fillText(banner.text,W/2,H*.3);g.globalAlpha=1;}
 }
@@ -816,7 +895,7 @@ function drawWarnings(g){
     g.strokeStyle=`rgba(255,${P.prox>.75?60:170},40,${.3+P.prox*.6})`;g.lineWidth=6+P.prox*10;g.beginPath();g.arc(W/2,H/2,r,a-.35,a+.35);g.stroke();}
   let wy=H*.7;g.font='bold 15px system-ui';
   const warn=(t,c)=>{g.fillStyle=blink?c:'#fff4';g.fillText(t,W/2,wy);wy+=20;};
-  if(P.shield<35)warn('SHIELDS LOW',RED);
+  if(P.shield<P.maxShield*.35)warn('SHIELDS LOW',RED);
   if(P.exposed)warn('EXPOSED — DROP BACK INTO THE TRENCH',RED);
   if(P.outside)warn('LEAVING BELT CORRIDOR',AMB);
   if(P.wrongWay)warn('WRONG WAY',AMB);
@@ -829,18 +908,19 @@ function drawSticks(g){
 }
 
 // ======================= MENUS =======================
-const SCREENS=['title','calib','studio','share','art','settings','help','pause','over'];
+const SCREENS=['hangar','title','calib','studio','share','art','settings','help','pause','over'];
 let screenStack=[],calibOpen=false;
 function showScreen(id){SCREENS.forEach(s=>$(s).classList.toggle('on',s===id));calibOpen=id==='calib';if(id==='title'){$('best').textContent=BEST.toLocaleString();}}
 function go(id){screenStack.push(SCREENS.find(s=>$(s).classList.contains('on')));
-  if(id==='calib')buildCalib();if(id==='studio')renderSlots();if(id==='share')buildShare();if(id==='art')buildArt();if(id==='settings')buildSettings();showScreen(id);}
+  if(id==='hangar')buildHangar();if(id==='calib')buildCalib();if(id==='studio')renderSlots();if(id==='share')buildShare();if(id==='art')buildArt();if(id==='settings')buildSettings();showScreen(id);}
 function back(){const p=screenStack.pop()||(state==='pause'?'pause':'title');showScreen(p);}
 document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>{audioInit();go(b.dataset.go);}));
 document.querySelectorAll('[data-back]').forEach(b=>b.addEventListener('click',back));
 $('bFly').onclick=()=>{screenStack=[];newRun(false);};
 $('bPractice').onclick=()=>{screenStack=[];newRun(true);};
-$('bResume').onclick=resumeGame;$('bRestart').onclick=()=>{screenStack=[];newRun(practice);};$('bQuit').onclick=()=>{screenStack=[];quitToTitle();};
-$('bRetry').onclick=()=>{screenStack=[];newRun(practice);};$('bOverQuit').onclick=()=>{screenStack=[];quitToTitle();};
+$('bOpen').onclick=()=>{screenStack=[];newRun(true,true);};
+$('bResume').onclick=resumeGame;$('bRestart').onclick=()=>{screenStack=[];newRun(practice,openSpace);};$('bQuit').onclick=()=>{screenStack=[];quitToTitle();};
+$('bRetry').onclick=()=>{screenStack=[];newRun(practice,openSpace);};$('bOverQuit').onclick=()=>{screenStack=[];quitToTitle();};
 $('bPrint').onclick=()=>window.print();
 window.onBack=()=>{if(state==='play'){pauseGame();return true;}const on=SCREENS.find(s=>$(s).classList.contains('on'));
   if(on==='pause'){resumeGame();return true;}if(on&&on!=='title'&&on!=='over'){back();return true;}return false;};
@@ -928,6 +1008,32 @@ function drawCalib(dt){
     if(i>=0){S.modeBtn=i;TS.mode=0;save();detectBtn=null;toast('Flight mode → Button '+(i+1));buildCalib();}
     else if(detectBtn.t<=0){detectBtn=null;$('detMsg').textContent='No button pressed - try again.';}}
 }
+// --- hangar / ship select ---
+function applyShipLook(){
+  mWing.color.setHex(SH.hull);mStripeB.color.setHex(SH.sA);mStripeR.color.setHex(SH.sB);mBoltR.color.setHex(SH.lA);mBoltG.color.setHex(SH.lB);
+  wings.forEach(w=>{w.glow.material.color.setHex(w.red?SH.lA:SH.lB);w.pivot.scale.set(w.side*SH.wl,1,1);});
+  $('shipName').textContent=SH.name;
+}
+function selectShip(i){S.ship=i;SH=SHIPS[i];save();applyShipLook();if(state==='menu')resetShip();}
+const hex=c=>'#'+c.toString(16).padStart(6,'0');
+function drawShipIcon(cv,s){const w=cv.clientWidth||220,h=64;cv.width=w*hs;cv.height=h*hs;const g=cv.getContext('2d');g.setTransform(hs,0,0,hs,0,0);
+  const cx=w/2,cy=h/2+4,L=Math.min(w*.42,95)*s.wl;g.lineCap='round';
+  for(const[dy,col,tip]of[[-1,s.sA,s.lA],[1,s.sB,s.lB]])for(const side of[-1,1]){
+    g.strokeStyle=hex(s.hull);g.lineWidth=7;g.beginPath();g.moveTo(cx,cy);g.lineTo(cx+side*L,cy+dy*14);g.stroke();
+    g.strokeStyle=hex(col);g.lineWidth=2.5;g.beginPath();g.moveTo(cx+side*12,cy+dy*2);g.lineTo(cx+side*L*.85,cy+dy*12);g.stroke();
+    g.fillStyle=hex(tip);g.beginPath();g.arc(cx+side*L,cy+dy*14,3.5,0,7);g.fill();}
+  g.fillStyle=hex(s.hull);g.beginPath();g.ellipse(cx,cy,9,26,0,0,7);g.fill();
+  g.fillStyle='rgba(120,200,255,.8)';g.beginPath();g.ellipse(cx,cy-10,4,8,0,0,7);g.fill();}
+function buildHangar(){
+  const el=$('shipGrid');el.innerHTML='';
+  const stat=(l,v)=>`<div class="st"><span>${l}</span><i><b style="width:${Math.round(clamp(v,0.05,1)*100)}%"></b></i></div>`;
+  SHIPS.forEach((s,i)=>{const d=document.createElement('div');d.className='shipc'+(i===S.ship?' sel':'');
+    d.innerHTML=`<h3>${s.name}${i===S.ship?' &#10003;':''}</h3><canvas></canvas><div class="small">${s.tag}</div>`+
+      stat('Speed',s.spd/1.9)+stat('Handling',s.turn/1.35)+stat('Shields',s.shield/170)+stat('Boost',s.bFill/s.bDrain/3)+stat('Lasers',s.fire/20)+stat('Skim zone',s.skim/1.5)+
+      `<div class="small">Top speed ${Math.round(175*s.spd*3.6)} km/h &middot; boost ${Math.round(175*s.spd*1.5*3.6)} km/h</div>`;
+    d.onclick=()=>{selectShip(i);buildHangar();toast(s.name+' selected');};
+    el.appendChild(d);drawShipIcon(d.querySelector('canvas'),s);});
+}
 // --- share / QR ---
 function buildShare(){drawQR($('qr'),APK_URL,5);$('qrUrl').textContent=APK_URL;$('webUrl').textContent=WEB_URL;}
 // --- settings ---
@@ -956,6 +1062,8 @@ const ART=[
  ['App icon','Mobile app icon: a white and blue eagle-shaped starfighter with X-shaped wings diving toward the viewer through a glowing ring, bold simple shapes, dark navy background, rounded square. No text.'],
  ['Title logo art','Wide banner artwork for a space racing game called SKIMRUNNER: a starfighter skimming low along a glowing metal trench with motion streaks, room at the top for a title. '+STYLE]
 ];
+ART.splice(1,0,...SHIPS.slice(1).map(s=>['Ship: '+s.name,'A sleek single-seat space fighter called '+s.name+': '+s.look+
+  ', four thin split-wings in an X shape with wingtip laser cannons, three-quarter front view on a dark starfield. '+STYLE]));
 function buildArt(){const el=$('artList');if(el.childElementCount)return;
   ART.forEach(([t,p])=>{const d=document.createElement('div');d.innerHTML=`<h3>${t}</h3><div class="prompt"></div>`;d.querySelector('.prompt').textContent=p;
     const b=document.createElement('button');b.className='sm';b.textContent='Copy';b.onclick=()=>{(navigator.clipboard?navigator.clipboard.writeText(p):Promise.reject()).then(()=>toast('Copied'),()=>{const ta=document.createElement('textarea');ta.value=p;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('Copied');});};
@@ -1023,7 +1131,7 @@ function frame(now){
   if((T*4|0)!==((T-dt)*4|0))layoutTouch();
 }
 $('ver').textContent=VER;$('best').textContent=BEST.toLocaleString();
-resetShip();ensureSegs(0,99);resize();updatePadStatus();
+applyShipLook();resetShip();ensureSegs(0,99);resize();updatePadStatus();
 addEventListener('pointerdown',()=>audioInit(),{once:true});
 requestAnimationFrame(frame);
 window.SKIM={P,S,segs,QR,IN,TS,newRun,sim(n,dt){for(let i=0;i<n;i++){T+=dt;readControls();if(state==='play')step(dt);updateWorld(dt);updateFx(dt);}},worldQuery,get state(){return state;}};
